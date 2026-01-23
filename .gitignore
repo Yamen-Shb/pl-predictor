@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+
+# Data
+data/raw/
+data/processed/
+data/metadata/
+
+# Environment variables
+.env
+
