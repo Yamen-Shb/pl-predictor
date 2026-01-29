@@ -9,7 +9,10 @@ venv/
 data/raw/
 data/processed/
 data/metadata/
+data/features/
 
 # Environment variables
 .env
 
+# Misc
+test_script.py

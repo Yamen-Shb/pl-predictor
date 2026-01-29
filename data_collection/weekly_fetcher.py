@@ -18,10 +18,9 @@ def main():
     RAW_PATH = f"data/raw/pl_{season}.parquet"
     FLAT_PATH = f"data/processed/matches_flat_{season}.parquet"
 
-
     # load last fetched date
-    metadata = metadata.load_metadata()
-    date_from = metadata.get(competition_key, {}).get("last_fetched_date")
+    metadataDate = metadata.load_metadata()
+    date_from = metadataDate.get(competition_key, {}).get("last_fetched_date")
 
     if date_from is None:
         raise ValueError("No last_fetched_date found. Run historical loader first.")
