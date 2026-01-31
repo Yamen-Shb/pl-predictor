@@ -11,6 +11,9 @@ data/processed/
 data/metadata/
 data/features/
 
+# Models
+models/artifacts
+
 # Environment variables
 .env
 
