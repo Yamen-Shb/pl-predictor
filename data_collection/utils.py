@@ -5,6 +5,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 API_KEY = os.getenv("FOOTBALL_DATA_API_KEY")
+if not API_KEY or not API_KEY.strip():
+    raise ValueError(
+        "FOOTBALL_DATA_API_KEY is not set. Add it to .env or the environment."
+    )
 BASE_URL = "https://api.football-data.org/v4"
 HEADERS = { 'X-Auth-Token': API_KEY }
 

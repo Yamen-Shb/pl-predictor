@@ -109,6 +109,10 @@ def plot_model_diagnostics(model, X_train, y_train, X_val, y_val, title_prefix="
 
 # main training pipeline
 def main():
+    if not Path(FEATURES_PATH).exists():
+        raise FileNotFoundError(
+            f"Features file not found at {FEATURES_PATH}. Run feature extraction first."
+        )
     print("Loading features...")
     df = pd.read_parquet(FEATURES_PATH)
 

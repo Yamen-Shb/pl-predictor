@@ -5,15 +5,6 @@ __pycache__/
 # Virtual environment
 venv/
 
-# Data
-data/raw/
-data/processed/
-data/metadata/
-data/features/
-
-# Models
-models/artifacts
-
 # Environment variables
 .env
 

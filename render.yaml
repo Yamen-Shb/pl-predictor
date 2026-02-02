@@ -1,0 +1,13 @@
+# Render Blueprint: Premier League Predictions API
+# 
+# GitHub Actions handles the daily pipeline (fetching data, training, predictions).
+# This service just serves the predictions via FastAPI.
+# Data files are committed to the repo and deployed with the app.
+
+services:
+  # FastAPI web service
+  - type: web
+    name: pl-predictions-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT

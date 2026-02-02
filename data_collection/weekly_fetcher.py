@@ -1,7 +1,7 @@
 import pandas as pd
 from datetime import date, timedelta
-import utils
-import metadata
+from data_collection import utils, metadata
+import os
 
 def fetch_matches_by_date(competition_id, date_from, date_to):
     params = {
@@ -33,6 +33,10 @@ def main():
         print("No matches returned from API.")
         return
 
+    if not os.path.exists(RAW_PATH) or not os.path.exists(FLAT_PATH):
+        raise FileNotFoundError(
+            "Raw or flat match files not found. Run historical_loader first."
+        )
     # load existing raw data
     df_existing = pd.read_parquet(RAW_PATH)
     existing_ids = set(df_existing["id"])
