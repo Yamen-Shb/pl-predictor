@@ -25,10 +25,6 @@ type PredictionsResponse = {
   generated_at: string
 }
 
-type Gameweek = {
-  gameweek: number
-}
-
 export default function PredictionsDashboard() {
   const [currentGameweek, setCurrentGameweek] = useState<number | null>(null)
   const [predictions, setPredictions] = useState<Prediction[]>([])

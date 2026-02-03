@@ -6,14 +6,49 @@ import pandas as pd
 import json
 from datetime import datetime
 import logging
+from contextlib import asynccontextmanager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Paths
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PREDICTIONS_PATH = PROJECT_ROOT / "data/predictions/predictions_latest.parquet"
+UPCOMING_PATH = PROJECT_ROOT / "data/upcoming/upcoming_gw_matches.parquet"
+METADATA_PATH = PROJECT_ROOT / "data/metadata/fetch_state.json"
+
+predictions_df = None
+upcoming_df = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global predictions_df, upcoming_df
+    try:
+        if PREDICTIONS_PATH.exists():
+            predictions_df = pd.read_parquet(PREDICTIONS_PATH)
+            logger.info(f"Loaded predictions: {len(predictions_df)} rows")
+        else:
+            logger.warning("Predictions file not found")
+
+        if UPCOMING_PATH.exists():
+            upcoming_df = pd.read_parquet(UPCOMING_PATH)
+            logger.info(f"Loaded upcoming matches: {len(upcoming_df)} rows")
+        else:
+            logger.warning("Upcoming matches file not found")
+
+    except Exception as e:
+        logger.error(f"Failed to load data on startup: {e}")
+
+    yield  # <-- this is where FastAPI runs until shutdown
+
+    # Optional: cleanup code here if needed
+    logger.info("Shutting down FastAPI lifespan")
+
 app = FastAPI(
     title="Premier League Predictions API",
     description="API for serving ML-based Premier League match predictions",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # CORS middleware
@@ -25,12 +60,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Paths
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PREDICTIONS_PATH = PROJECT_ROOT / "data/predictions/predictions_latest.parquet"
-METADATA_PATH = PROJECT_ROOT / "data/metadata/fetch_state.json"
-
-
 @app.get("/")
 async def root():
     return {
@@ -41,7 +70,6 @@ async def root():
             "predictions": "/predictions/latest"
         }
     }
-
 
 @app.get("/health")
 async def health_check():
@@ -81,61 +109,28 @@ async def health_check():
 
 @app.get("/predictions/latest")
 async def get_latest_predictions():
-    """
-    Get the latest gameweek predictions.
-    
-    Returns:
-        - gameweek: The gameweek number
-        - predictions: List of match predictions with probabilities
-    """
-    try:
-        if not PREDICTIONS_PATH.exists():
-            raise HTTPException(
-                status_code=404,
-                detail="No predictions available. Scheduler may not have run yet."
-            )
-        
-        # Load predictions
-        df_predictions = pd.read_parquet(PREDICTIONS_PATH)
-        
-        if df_predictions.empty:
-            raise HTTPException(
-                status_code=404,
-                detail="Predictions file is empty."
-            )
-        
-        # Convert to list of dicts
-        predictions = df_predictions.to_dict('records')
-        
-        # Convert timestamps to ISO format strings
-        for pred in predictions:
-            if 'date' in pred and pd.notna(pred['date']):
-                pred['date'] = pd.Timestamp(pred['date']).isoformat()
-        
-        # Try to get gameweek from upcoming matches file
-        gameweek = None
-        upcoming_path = PROJECT_ROOT / "data/upcoming/upcoming_gw_matches.parquet"
-        if upcoming_path.exists():
-            df_upcoming = pd.read_parquet(upcoming_path)
-            if not df_upcoming.empty and 'matchweek' in df_upcoming.columns:
-                gameweek = int(df_upcoming['matchweek'].iloc[0])
-        
-        return {
-            "gameweek": gameweek,
-            "count": len(predictions),
-            "predictions": predictions,
-            "generated_at": datetime.utcnow().isoformat()
-        }
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching predictions: {e}")
+    if predictions_df is None or predictions_df.empty:
         raise HTTPException(
-            status_code=500,
-            detail=f"Internal server error: {str(e)}"
+            status_code=404,
+            detail="No predictions available. Scheduler may not have run yet."
         )
 
+    predictions = predictions_df.to_dict("records")
+
+    for pred in predictions:
+        if "date" in pred and pd.notna(pred["date"]):
+            pred["date"] = pd.Timestamp(pred["date"]).isoformat()
+
+    gameweek = None
+    if upcoming_df is not None and "matchweek" in upcoming_df.columns:
+        gameweek = int(upcoming_df["matchweek"].iloc[0])
+
+    return {
+        "gameweek": gameweek,
+        "count": len(predictions),
+        "predictions": predictions,
+        "generated_at": datetime.utcnow().isoformat()
+    }
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
