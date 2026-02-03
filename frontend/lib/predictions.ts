@@ -1,5 +1,5 @@
-// frontend/src/api/predictions.ts
-const API_BASE = "http://localhost:8000";
+// frontend/lib/predictions.ts
+const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
 export async function getLatestPredictions() {
   const res = await fetch(`${API_BASE}/predictions/latest`);
