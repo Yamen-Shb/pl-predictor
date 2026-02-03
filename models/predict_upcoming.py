@@ -2,10 +2,9 @@ import pandas as pd
 from pathlib import Path
 import logging
 import sys
-from models.predict_logic import predict_upcoming, load_models
-
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
+from models.predict_logic import predict_upcoming, load_models
 from data_processing.build_upcoming_features import build_upcoming_features
 
 logging.basicConfig(
