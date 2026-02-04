@@ -125,7 +125,7 @@ def run_weekly_pipeline() -> bool:
     try:
         from models.train import main as run_train
         logger.info("Training models...")
-        run_train()
+        run_train(show_plots=False)
     except Exception as e:
         logger.error(f"Training failed: {e}")
         return False

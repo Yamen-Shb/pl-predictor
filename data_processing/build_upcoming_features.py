@@ -56,11 +56,13 @@ def compute_features_for_upcoming_match(historical_data: pd.DataFrame, match: pd
     home_team = match["home_team"]
     away_team = match["away_team"]
 
-    home_points_last5, home_goals_for_last5, home_goals_against_last5 = \
-        compute_team_rolling_features(historical_data, home_team, ROLLING_WINDOW)
+    home_points_last5, home_goals_for_last5, home_goals_against_last5, \
+    home_max_goals, home_min_goals, home_scored_3plus, home_scored_0, \
+    home_clean_sheets, home_conceded_3plus = compute_team_rolling_features(historical_data, home_team, ROLLING_WINDOW)
 
-    away_points_last5, away_goals_for_last5, away_goals_against_last5 = \
-        compute_team_rolling_features(historical_data, away_team, ROLLING_WINDOW)
+    away_points_last5, away_goals_for_last5, away_goals_against_last5, \
+    away_max_goals, away_min_goals, away_scored_3plus, away_scored_0, \
+    away_clean_sheets, away_conceded_3plus = compute_team_rolling_features(historical_data, away_team, ROLLING_WINDOW)
 
     home_home_goals_for_avg, home_home_goals_against_avg = \
         compute_venue_averages(historical_data, home_team, "home")
@@ -92,6 +94,18 @@ def compute_features_for_upcoming_match(historical_data: pd.DataFrame, match: pd
         "h2h_home_points_last5": h2h_home_points_last5,
         "h2h_away_points_last5": h2h_away_points_last5,
         "is_big_game": is_big_game,
+        "home_max_goals_last5": home_max_goals,
+        "home_min_goals_last5": home_min_goals,
+        "home_scored_3plus_last5": home_scored_3plus,
+        "home_scored_0_last5": home_scored_0,
+        "home_clean_sheets_last5": home_clean_sheets,
+        "home_conceded_3plus_last5": home_conceded_3plus,
+        "away_max_goals_last5": away_max_goals,
+        "away_min_goals_last5": away_min_goals,
+        "away_scored_3plus_last5": away_scored_3plus,
+        "away_scored_0_last5": away_scored_0,
+        "away_clean_sheets_last5": away_clean_sheets,
+        "away_conceded_3plus_last5": away_conceded_3plus
     }
 
 def build_upcoming_features() -> pd.DataFrame:

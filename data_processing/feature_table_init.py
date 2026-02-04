@@ -23,6 +23,18 @@ def init_features_table():
         "is_big_game",
         "h2h_home_points_last5",
         "h2h_away_points_last5",
+        "home_max_goals_last5",
+        "home_min_goals_last5",
+        "home_scored_3plus_last5",
+        "home_scored_0_last5",
+        "home_clean_sheets_last5",
+        "home_conceded_3plus_last5",
+        "away_max_goals_last5",
+        "away_min_goals_last5",
+        "away_scored_3plus_last5",
+        "away_scored_0_last5",
+        "away_clean_sheets_last5",
+        "away_conceded_3plus_last5",
         "home_goals",
         "away_goals"
     ]

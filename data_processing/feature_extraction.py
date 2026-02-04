@@ -24,26 +24,46 @@ def compute_team_rolling_features(historical_data, team, window):
     points = 0
     goals_for = 0
     goals_against = 0
+    goals_scored_list = []
+    goals_conceded_list = []
 
     for _, game in team_matches.iterrows():
         if game['home_team'] == team:
-            goals_for += game['home_score']
-            goals_against += game['away_score']
+            gf = game['home_score']
+            ga = game['away_score']
+            goals_for += gf
+            goals_against += ga
+            goals_scored_list.append(gf)
+            goals_conceded_list.append(ga)
 
             if game['winner'] == 'HOME_TEAM':
                 points += 3
             elif game['winner'] == 'DRAW':
                 points += 1
         else:
-            goals_for += game['away_score']
-            goals_against += game['home_score']
+            gf = game['away_score']
+            ga = game['home_score']
+            goals_for += gf
+            goals_against += ga
+            goals_scored_list.append(gf)
+            goals_conceded_list.append(ga)
 
             if game['winner'] == 'AWAY_TEAM':
                 points += 3
             elif game['winner'] == 'DRAW':
                 points += 1
 
-    return points, goals_for, goals_against
+    # NEW: High-variance features to capture scoring diversity
+    max_goals_scored = max(goals_scored_list) if goals_scored_list else 0
+    min_goals_scored = min(goals_scored_list) if goals_scored_list else 0
+    scored_3plus = sum(1 for g in goals_scored_list if g >= 3)
+    scored_0 = sum(1 for g in goals_scored_list if g == 0)
+    clean_sheets = sum(1 for g in goals_conceded_list if g == 0)
+    conceded_3plus = sum(1 for g in goals_conceded_list if g >= 3)
+
+    return (points, goals_for, goals_against, 
+            max_goals_scored, min_goals_scored, 
+            scored_3plus, scored_0, clean_sheets, conceded_3plus)
 
 def compute_venue_averages(historical_data, team, venue):
     if venue not in {"home", "away"}:
@@ -125,8 +145,14 @@ def compute_features_for_match(historical_data, match, rolling_window, derby_gro
     home_team = match["home_team"]
     away_team = match["away_team"]
 
-    home_points_last5, home_goals_for_last5, home_goals_against_last5 = compute_team_rolling_features(historical_data, home_team, rolling_window)
-    away_points_last5, away_goals_for_last5, away_goals_against_last5 = compute_team_rolling_features(historical_data, away_team, rolling_window)
+    # Unpack extended features
+    (home_points_last5, home_goals_for_last5, home_goals_against_last5,
+     home_max_goals, home_min_goals, home_scored_3plus, home_scored_0, 
+     home_clean_sheets, home_conceded_3plus) = compute_team_rolling_features(historical_data, home_team, rolling_window)
+    
+    (away_points_last5, away_goals_for_last5, away_goals_against_last5,
+     away_max_goals, away_min_goals, away_scored_3plus, away_scored_0,
+     away_clean_sheets, away_conceded_3plus) = compute_team_rolling_features(historical_data, away_team, rolling_window)
 
     home_home_goals_for_avg, home_home_goals_against_avg = compute_venue_averages(historical_data, home_team, "home")
     away_away_goals_for_avg, away_away_goals_against_avg = compute_venue_averages(historical_data, away_team, "away")
@@ -135,6 +161,7 @@ def compute_features_for_match(historical_data, match, rolling_window, derby_gro
     is_big_game = compute_is_big_game(home_team, away_team, derby_groups, historic_top6)
 
     return {
+        # Original features
         "home_points_last5": home_points_last5,
         "away_points_last5": away_points_last5,
         "home_goals_for_last5": home_goals_for_last5,
@@ -148,6 +175,18 @@ def compute_features_for_match(historical_data, match, rolling_window, derby_gro
         "h2h_home_points_last5": h2h_home_points_last5,
         "h2h_away_points_last5": h2h_away_points_last5,
         "is_big_game": is_big_game,
+        "home_max_goals_last5": home_max_goals,
+        "home_min_goals_last5": home_min_goals,
+        "home_scored_3plus_last5": home_scored_3plus,
+        "home_scored_0_last5": home_scored_0,
+        "home_clean_sheets_last5": home_clean_sheets,
+        "home_conceded_3plus_last5": home_conceded_3plus,
+        "away_max_goals_last5": away_max_goals,
+        "away_min_goals_last5": away_min_goals,
+        "away_scored_3plus_last5": away_scored_3plus,
+        "away_scored_0_last5": away_scored_0,
+        "away_clean_sheets_last5": away_clean_sheets,
+        "away_conceded_3plus_last5": away_conceded_3plus,
     }
 
 
