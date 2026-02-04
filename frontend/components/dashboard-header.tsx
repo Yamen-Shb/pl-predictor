@@ -27,7 +27,7 @@ export function DashboardHeader({ gameweek }: DashboardHeaderProps) {
             variant="secondary"
             className="text-sm px-4 py-1.5 bg-primary/10 text-primary border-primary/20 border"
           >
-            Gameweek {gameweek}
+            Gameweek {gameweek} Predictions
           </Badge>
         </div>
       </div>
