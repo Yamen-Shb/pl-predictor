@@ -57,20 +57,26 @@ export default function PredictionsDashboard() {
 
         <main className="flex-1 container mx-auto px-4 py-6 md:py-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-            {predictions.map((match, index) => (
-              <MatchCard
-                key={`${match.home_team}-${match.away_team}-${index}`}
-                homeTeam={match.home_team}
-                awayTeam={match.away_team}
-                homeScore={match.home_pred}
-                awayScore={match.away_pred}
-                homeWinProb={Math.round(match.home_win_pct*100)}
-                drawProb={Math.round(match.draw_pct*100)}
-                awayWinProb={Math.round(match.away_win_pct*100)}
-                matchDate={new Date(match.date).toLocaleDateString()}
-                matchTime={new Date(match.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              />
-            ))}
+          {predictions.map((match, index) => {
+          const homeWin = Math.round(match.home_win_pct * 100);
+          const draw = Math.round(match.draw_pct * 100);
+          const awayWin = 100 - homeWin - draw;
+
+          return (
+            <MatchCard
+              key={`${match.home_team}-${match.away_team}-${index}`}
+              homeTeam={match.home_team}
+              awayTeam={match.away_team}
+              homeScore={match.home_pred}
+              awayScore={match.away_pred}
+              homeWinProb={homeWin}
+              drawProb={draw}
+              awayWinProb={awayWin}
+              matchDate={new Date(match.date).toLocaleDateString()}
+              matchTime={new Date(match.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            />
+          );
+        })}
           </div>
         </main>
 
