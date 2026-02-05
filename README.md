@@ -204,7 +204,7 @@ The model predicts the correct exact score ~13% of the time and correct match ou
 
 This project is for educational purposes. Match data sourced from Football-Data.org under their terms of use.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Football-Data.org for providing free API access
 - XGBoost developers for the excellent ML library
