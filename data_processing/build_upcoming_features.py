@@ -153,3 +153,6 @@ def build_upcoming_features() -> pd.DataFrame:
     print(f"Saved {len(df_upcoming_features)} upcoming feature rows → {OUTPUT_PATH}")
 
     return df_upcoming_features
+
+if __name__ == "__main__":
+    build_upcoming_features()

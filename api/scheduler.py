@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 import logging
 import pandas as pd
+from datetime import timedelta
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from data_collection.metadata import load_metadata, save_metadata
@@ -11,6 +12,7 @@ from data_processing.build_upcoming_features import build_upcoming_features
 from models.predict_upcoming import predict_upcoming, load_models
 from data_collection.weekly_fetcher import main as run_weekly_fetcher
 from data_processing.feature_extraction import extract_and_append_features
+from data_collection.metadata import get_last_upcoming_match_date
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data/metadata"
@@ -156,6 +158,27 @@ def run_upcoming_pipeline() -> bool:
         sys.path.insert(0, str(PROJECT_ROOT))
     os.chdir(PROJECT_ROOT)
 
+    # Get current time
+    now = pd.Timestamp.now(tz='UTC')
+    
+    last_match_str = get_last_upcoming_match_date("pl_2025")
+    if last_match_str:
+        # Ensure timezone-aware (UTC) - metadata strings may be naive
+        last_match = pd.to_datetime(last_match_str)
+        if last_match.tz is None:
+            last_match = last_match.tz_localize('UTC')
+        else:
+            last_match = last_match.tz_convert('UTC')
+    else:
+        last_match = None
+    
+    if last_match is not None:
+        # Only fetch after last match + 3 hours
+        cutoff = last_match + timedelta(hours=3)
+        if now < cutoff:
+            print(f"⏸ Too soon. Last match at {last_match}. Next fetch after {cutoff}.")
+            return
+
     # 1. Fetch upcoming matches (handles cutoff logic internally)
     try:
         logger.info("Running upcoming fetcher...")
@@ -163,7 +186,7 @@ def run_upcoming_pipeline() -> bool:
     except Exception as e:
         logger.error(f"Upcoming fetcher failed: {e}")
         return False
-
+    
     # Check if we have upcoming matches to predict
     upcoming_path = PROJECT_ROOT / "data/upcoming/upcoming_gw_matches.parquet"
     if not upcoming_path.exists():

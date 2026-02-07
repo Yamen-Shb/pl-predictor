@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ARTIFACTS_DIR = PROJECT_ROOT / "models" / "artifacts"
 
 # Columns dropped for model input 
-ID_COLUMNS = ["match_id", "date", "home_team", "away_team", "home_goals", "away_goals"]
+ID_COLUMNS = ["match_id", "matchweek", "date", "home_team", "away_team", "home_goals", "away_goals"]
 
 
 def load_models():
