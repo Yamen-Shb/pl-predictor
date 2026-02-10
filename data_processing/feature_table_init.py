@@ -35,6 +35,12 @@ def init_features_table():
         "away_scored_0_last5",
         "away_clean_sheets_last5",
         "away_conceded_3plus_last5",
+        "home_elo",
+        "away_elo",
+        "elo_diff",  
+        "home_league_position",
+        "away_league_position",
+        "position_diff",
         "home_goals",
         "away_goals"
     ]

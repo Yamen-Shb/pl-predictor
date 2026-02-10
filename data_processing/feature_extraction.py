@@ -127,6 +127,101 @@ def compute_is_big_game(home_team, away_team, derby_groups, historic_top6):
     num_top6 = (1 if home_team in historic_top6 else 0) + (1 if away_team in historic_top6 else 0)
     return 2*is_derby + num_top6
 
+def compute_elo_ratings(historical_data, initial_elo=1500, k_factor=20):
+    """
+    Calculate ELO ratings for all teams up to each match.
+    Returns dict: {team_name: current_elo}
+    """
+    elo_ratings = {}
+    
+    for _, match in historical_data.iterrows():
+        home_team = match['home_team']
+        away_team = match['away_team']
+        
+        # Initialize teams if new
+        if home_team not in elo_ratings:
+            elo_ratings[home_team] = initial_elo
+        if away_team not in elo_ratings:
+            elo_ratings[away_team] = initial_elo
+        
+        # Get current ratings
+        home_elo = elo_ratings[home_team]
+        away_elo = elo_ratings[away_team]
+        
+        # Expected scores (home advantage = +100 elo)
+        expected_home = 1 / (1 + 10 ** ((away_elo - (home_elo + 100)) / 400))
+        expected_away = 1 - expected_home
+        
+        # Actual scores
+        if match['winner'] == 'HOME_TEAM':
+            actual_home, actual_away = 1, 0
+        elif match['winner'] == 'AWAY_TEAM':
+            actual_home, actual_away = 0, 1
+        else:
+            actual_home, actual_away = 0.5, 0.5
+        
+        # Update ratings
+        elo_ratings[home_team] = home_elo + k_factor * (actual_home - expected_home)
+        elo_ratings[away_team] = away_elo + k_factor * (actual_away - expected_away)
+    
+    return elo_ratings
+
+
+def get_team_elo(historical_data, team, default=1500):
+    """Get team's current ELO from historical data"""
+    elo_ratings = compute_elo_ratings(historical_data)
+    return elo_ratings.get(team, default)
+
+
+def compute_league_table(historical_data, season):
+    """Calculate league standings up to this point in the season"""
+    season_matches = historical_data[historical_data['season'] == season]
+    
+    standings = {}
+    
+    for _, match in season_matches.iterrows():
+        home = match['home_team']
+        away = match['away_team']
+        
+        # Initialize
+        if home not in standings:
+            standings[home] = {'points': 0, 'gf': 0, 'ga': 0, 'gd': 0}
+        if away not in standings:
+            standings[away] = {'points': 0, 'gf': 0, 'ga': 0, 'gd': 0}
+        
+        # Update stats
+        standings[home]['gf'] += match['home_score']
+        standings[home]['ga'] += match['away_score']
+        standings[away]['gf'] += match['away_score']
+        standings[away]['ga'] += match['home_score']
+        
+        if match['winner'] == 'HOME_TEAM':
+            standings[home]['points'] += 3
+        elif match['winner'] == 'AWAY_TEAM':
+            standings[away]['points'] += 3
+        else:
+            standings[home]['points'] += 1
+            standings[away]['points'] += 1
+        
+        standings[home]['gd'] = standings[home]['gf'] - standings[home]['ga']
+        standings[away]['gd'] = standings[away]['gf'] - standings[away]['ga']
+    
+    # Sort by points, then GD
+    sorted_teams = sorted(
+        standings.items(),
+        key=lambda x: (x[1]['points'], x[1]['gd']),
+        reverse=True
+    )
+    
+    # Return position dict
+    return {team: pos+1 for pos, (team, _) in enumerate(sorted_teams)}
+
+
+def get_league_position(historical_data, team, season):
+    """Get team's league position"""
+    table = compute_league_table(historical_data, season)
+    return table.get(team, 10) 
+
 def build_feature_row(match, computed_features):
     feature_row = {
         "match_id": match["match_id"],
@@ -144,8 +239,9 @@ def build_feature_row(match, computed_features):
 def compute_features_for_match(historical_data, match, rolling_window, derby_groups, historic_top6):
     home_team = match["home_team"]
     away_team = match["away_team"]
+    season = match.get("season", 2025)  # Default to current season
 
-    # Unpack extended features
+    # Existing features
     (home_points_last5, home_goals_for_last5, home_goals_against_last5,
      home_max_goals, home_min_goals, home_scored_3plus, home_scored_0, 
      home_clean_sheets, home_conceded_3plus) = compute_team_rolling_features(historical_data, home_team, rolling_window)
@@ -159,6 +255,16 @@ def compute_features_for_match(historical_data, match, rolling_window, derby_gro
 
     h2h_home_points_last5, h2h_away_points_last5 = compute_h2h_features(historical_data, home_team, away_team, rolling_window)
     is_big_game = compute_is_big_game(home_team, away_team, derby_groups, historic_top6)
+
+    # NEW: ELO ratings
+    home_elo = get_team_elo(historical_data, home_team)
+    away_elo = get_team_elo(historical_data, away_team)
+    elo_diff = home_elo - away_elo
+    
+    # NEW: League positions
+    home_pos = get_league_position(historical_data, home_team, season)
+    away_pos = get_league_position(historical_data, away_team, season)
+    position_diff = away_pos - home_pos  # Negative = home team better
 
     return {
         # Original features
@@ -175,6 +281,7 @@ def compute_features_for_match(historical_data, match, rolling_window, derby_gro
         "h2h_home_points_last5": h2h_home_points_last5,
         "h2h_away_points_last5": h2h_away_points_last5,
         "is_big_game": is_big_game,
+        # Variance features
         "home_max_goals_last5": home_max_goals,
         "home_min_goals_last5": home_min_goals,
         "home_scored_3plus_last5": home_scored_3plus,
@@ -187,8 +294,14 @@ def compute_features_for_match(historical_data, match, rolling_window, derby_gro
         "away_scored_0_last5": away_scored_0,
         "away_clean_sheets_last5": away_clean_sheets,
         "away_conceded_3plus_last5": away_conceded_3plus,
+        # NEW: Team strength features
+        "home_elo": home_elo,
+        "away_elo": away_elo,
+        "elo_diff": elo_diff,
+        "home_league_position": home_pos,
+        "away_league_position": away_pos,
+        "position_diff": position_diff,
     }
-
 
 
 def extract_and_append_features(df_flat, features_path="data/features/features.parquet", start_season=2023, start_matchweek=6):

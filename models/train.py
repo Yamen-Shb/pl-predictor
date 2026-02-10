@@ -105,7 +105,7 @@ def evaluate_match_predictions(home_model, away_model, X_home, y_home, X_away, y
         # Outcome: use AGGREGATED probabilities with smart draw prediction
         home_win_prob, draw_prob, away_win_prob = match_outcome_probabilities(score_matrix)
         
-        if draw_prob > 0.27:
+        if draw_prob > home_win_prob and draw_prob > away_win_prob:
             pred_outcomes.append('D')
         elif home_win_prob > away_win_prob:
             pred_outcomes.append('H')

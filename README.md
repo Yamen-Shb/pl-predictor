@@ -178,7 +178,7 @@ Typical metrics on test set:
 - **MAE**: ~0.9-1.0 goals
 - **RMSE**: ~1.1-1.2 goals
 
-The model predicts the correct exact score ~13% of the time and correct match outcome ~50% of the time.
+The model predicts the correct exact score ~13% of the time and correct match outcome ~57% of the time.
 
 ## Key Design Decisions
 

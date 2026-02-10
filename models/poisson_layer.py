@@ -16,4 +16,12 @@ def match_outcome_probabilities(score_matrix):
     home_win_prob = np.sum(np.tril(score_matrix, -1))  # Lower triangle: home > away
     draw_prob = np.sum(np.diag(score_matrix))
     away_win_prob = np.sum(np.triu(score_matrix, 1))  # Upper triangle: away > home
+
+    if abs(home_win_prob - away_win_prob) < 0.06:
+        draw_prob *= 1.62
+        total = home_win_prob + draw_prob + away_win_prob
+        home_win_prob /= total
+        draw_prob /= total
+        away_win_prob /= total
+
     return home_win_prob, draw_prob, away_win_prob

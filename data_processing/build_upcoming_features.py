@@ -11,6 +11,8 @@ from data_processing.feature_extraction import (
     compute_venue_averages,
     compute_h2h_features,
     compute_is_big_game,
+    get_team_elo,              
+    get_league_position,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -55,6 +57,7 @@ def load_flat_matches_for_history() -> pd.DataFrame:
 def compute_features_for_upcoming_match(historical_data: pd.DataFrame, match: pd.Series) -> dict:
     home_team = match["home_team"]
     away_team = match["away_team"]
+    season = match["season"]
 
     home_points_last5, home_goals_for_last5, home_goals_against_last5, \
     home_max_goals, home_min_goals, home_scored_3plus, home_scored_0, \
@@ -79,6 +82,14 @@ def compute_features_for_upcoming_match(historical_data: pd.DataFrame, match: pd
         DERBY_GROUPS,
         HISTORIC_TOP6
     )
+
+    home_elo = get_team_elo(historical_data, home_team)
+    away_elo = get_team_elo(historical_data, away_team)
+    elo_diff = home_elo - away_elo
+    
+    home_pos = get_league_position(historical_data, home_team, season)
+    away_pos = get_league_position(historical_data, away_team, season)
+    position_diff = away_pos - home_pos
 
     return {
         "home_points_last5": home_points_last5,
@@ -105,7 +116,13 @@ def compute_features_for_upcoming_match(historical_data: pd.DataFrame, match: pd
         "away_scored_3plus_last5": away_scored_3plus,
         "away_scored_0_last5": away_scored_0,
         "away_clean_sheets_last5": away_clean_sheets,
-        "away_conceded_3plus_last5": away_conceded_3plus
+        "away_conceded_3plus_last5": away_conceded_3plus,
+        "home_elo": home_elo,
+        "away_elo": away_elo,
+        "elo_diff": elo_diff,
+        "home_league_position": home_pos,
+        "away_league_position": away_pos,
+        "position_diff": position_diff
     }
 
 def build_upcoming_features() -> pd.DataFrame:
@@ -113,6 +130,17 @@ def build_upcoming_features() -> pd.DataFrame:
     historical_matches = load_flat_matches_for_history() 
     historical_matches["date"] = pd.to_datetime(historical_matches["date"])
     upcoming_df["date"] = pd.to_datetime(upcoming_df["date"])
+
+    if 'season' not in historical_matches.columns:
+        historical_matches['season'] = historical_matches['date'].dt.year
+        # Adjust for seasons that span years (Aug 2023 = 2023-24 season)
+        historical_matches.loc[historical_matches['date'].dt.month >= 8, 'season'] = historical_matches['date'].dt.year
+        historical_matches.loc[historical_matches['date'].dt.month < 8, 'season'] = historical_matches['date'].dt.year - 1
+
+    if 'season' not in upcoming_df.columns:
+        upcoming_df['season'] = upcoming_df['date'].dt.year
+        upcoming_df.loc[upcoming_df['date'].dt.month >= 8, 'season'] = upcoming_df['date'].dt.year
+        upcoming_df.loc[upcoming_df['date'].dt.month < 8, 'season'] = upcoming_df['date'].dt.year - 1
 
     upcoming_features = []
 

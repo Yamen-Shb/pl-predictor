@@ -28,10 +28,10 @@ def objective(trial):
         'n_estimators': trial.suggest_int('n_estimators', 100, 1000),
         'learning_rate': trial.suggest_float('learning_rate', 0.005, 0.1, log=True),
         'max_depth': trial.suggest_int('max_depth', 3, 15),
-        'subsample': trial.suggest_float('subsample', 0.5, 1.0),
-        'colsample_bytree': trial.suggest_float('colsample_bytree', 0.5, 1.0),
-        'reg_alpha': trial.suggest_float('reg_alpha', 0.0, 2.0),
-        'reg_lambda': trial.suggest_float('reg_lambda', 0.0, 2.0),
+        'subsample': trial.suggest_float('subsample', 0.3, 1.0),
+        'colsample_bytree': trial.suggest_float('colsample_bytree', 0.3, 1.0),
+        'reg_alpha': trial.suggest_float('reg_alpha', 0.0, 5.0),
+        'reg_lambda': trial.suggest_float('reg_lambda', 0.0, 5.0),
         'min_child_weight': trial.suggest_int('min_child_weight', 1, 10),
         'gamma': trial.suggest_float('gamma', 0.0, 10.0),
         'objective': 'count:poisson',
@@ -77,7 +77,6 @@ def objective(trial):
 
 def main():
     print("Starting Optuna hyperparameter tuning...")
-    print("This may take a while (30-60 min for 100 trials)")
     
     # Create study
     study = optuna.create_study(
