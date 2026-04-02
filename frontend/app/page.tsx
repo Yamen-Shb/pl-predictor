@@ -8,7 +8,7 @@ import { MatchCard } from "@/components/match-card"
 
 type Prediction = {
   match_id: string
-  date: string
+  match_date: string
   home_team: string
   away_team: string
   home_pred: number
@@ -62,6 +62,8 @@ export default function PredictionsDashboard() {
           const draw = Math.round(match.draw_pct * 100);
           const awayWin = 100 - homeWin - draw;
 
+          const safeDate = new Date(match.match_date)
+
           return (
             <MatchCard
               key={`${match.home_team}-${match.away_team}-${index}`}
@@ -72,8 +74,8 @@ export default function PredictionsDashboard() {
               homeWinProb={homeWin}
               drawProb={draw}
               awayWinProb={awayWin}
-              matchDate={new Date(match.date).toLocaleDateString()}
-              matchTime={new Date(match.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              matchDate={safeDate.toLocaleDateString()}
+              matchTime={safeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             />
           );
         })}
