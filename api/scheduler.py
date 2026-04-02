@@ -4,6 +4,7 @@ from pathlib import Path
 import logging
 import pandas as pd
 from datetime import timedelta
+from supabase import create_client
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from data_collection.metadata import load_metadata, save_metadata
@@ -233,9 +234,28 @@ def run_upcoming_pipeline() -> bool:
         df_predictions.to_parquet(predictions_path, index=False)
         
         logger.info(f"Saved {len(predictions)} predictions to {predictions_path}")
+
+        gw = df_features["matchweek"].iloc[0] if "matchweek" in df_features.columns else "Unknown"
+
+        supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+
+        records = df_predictions.rename(columns={"date": "match_date"})
+        records["match_date"] = records["match_date"].astype(str)
+        records["gameweek"] = int(gw)
+
+        # Overwrite current predictions
+        supabase.table("predictions_current").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
+        supabase.table("predictions_current").insert(records.to_dict("records")).execute()
+
+        # Append to history (ignore if gameweek already exists)
+        supabase.table("predictions_history").upsert(
+            records.to_dict("records"),
+            on_conflict="gameweek,home_team,away_team"
+        ).execute()
+
+        logger.info("Predictions written to Supabase.")
         
         # Display summary
-        gw = df_features["matchweek"].iloc[0] if "matchweek" in df_features.columns else "Unknown"
         logger.info(f"\n{'='*60}")
         logger.info(f"GW {gw} Predictions Summary")
         logger.info(f"{'='*60}")
