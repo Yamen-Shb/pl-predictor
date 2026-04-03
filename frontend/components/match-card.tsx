@@ -88,22 +88,20 @@ export function MatchCard({
 
         {/* Teams and Score */}
         <div className="p-4">
-          <div className="flex items-center justify-between gap-3">
+          <div className="relative flex items-center justify-between">
+            
             {/* Home Team */}
-            <div className="flex-1 flex flex-col items-center gap-2">
+            <div className="w-[38%] flex flex-col items-center gap-2">
               <div 
-                className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center border-[2.5px] transition-all duration-300 group-hover:shadow-lg"
-                style={{ 
-                  borderColor: homeColor,
-                  boxShadow: `0 0 0 0 ${homeColor}00`,
-                }}
+                className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center border-[2.5px] transition-all duration-300 group-hover:shadow-lg flex-shrink-0"
+                style={{ borderColor: homeColor }}
               >
                 <span className="text-xl font-bold text-foreground">
                   {homeTeam.charAt(0)}
                 </span>
               </div>
-              <div className="flex flex-col items-center gap-0.5">
-                <span className="text-sm font-medium text-foreground text-center leading-tight">
+              <div className="flex flex-col items-center gap-0.5 w-full">
+                <span className="text-sm font-medium text-foreground text-center leading-tight min-h-[2.5rem] flex items-center justify-center">
                   {homeTeam}
                 </span>
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -112,32 +110,37 @@ export function MatchCard({
               </div>
             </div>
 
-            {/* Score */}
-            <div className="flex items-center gap-3">
-              <span className="text-3xl font-bold text-foreground tabular-nums">
-                {homeScore}
-              </span>
-              <span className="text-xl text-muted-foreground">-</span>
-              <span className="text-3xl font-bold text-foreground tabular-nums">
-                {awayScore}
-              </span>
+            {/* Score - absolutely centered, aligned to circles */}
+            <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
+              {/* Score sits at circle level */}
+              <div className="h-12 flex items-center gap-3">
+                <span className="text-3xl font-bold text-foreground tabular-nums">
+                  {homeScore}
+                </span>
+                <span className="text-xl text-muted-foreground">-</span>
+                <span className="text-3xl font-bold text-foreground tabular-nums">
+                  {awayScore}
+                </span>
+              </div>
+              {/* Invisible spacer mirrors min-h-[2.5rem] name + label below */}
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-sm min-h-[2.5rem] invisible">x</span>
+                <span className="text-[10px] invisible">x</span>
+              </div>
             </div>
 
             {/* Away Team */}
-            <div className="flex-1 flex flex-col items-center gap-2">
+            <div className="w-[38%] flex flex-col items-center gap-2">
               <div 
-                className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center border-[2.5px] transition-all duration-300 group-hover:shadow-lg"
-                style={{ 
-                  borderColor: awayColor,
-                  boxShadow: `0 0 0 0 ${awayColor}00`,
-                }}
+                className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center border-[2.5px] transition-all duration-300 group-hover:shadow-lg flex-shrink-0"
+                style={{ borderColor: awayColor }}
               >
                 <span className="text-xl font-bold text-foreground">
                   {awayTeam.charAt(0)}
                 </span>
               </div>
-              <div className="flex flex-col items-center gap-0.5">
-                <span className="text-sm font-medium text-foreground text-center leading-tight">
+              <div className="flex flex-col items-center gap-0.5 w-full">
+                <span className="text-sm font-medium text-foreground text-center leading-tight min-h-[2.5rem] flex items-center justify-center">
                   {awayTeam}
                 </span>
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -145,6 +148,7 @@ export function MatchCard({
                 </span>
               </div>
             </div>
+
           </div>
         </div>
 
