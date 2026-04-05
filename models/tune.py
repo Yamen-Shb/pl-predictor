@@ -1,7 +1,6 @@
 import optuna
 import pandas as pd
 import xgboost as xgb
-from sklearn.metrics import mean_absolute_error
 from pathlib import Path
 import json
 import pickle
@@ -22,23 +21,35 @@ def objective(trial):
     # Load data
     df = pd.read_parquet(FEATURES_PATH)
     train_df, val_df, _ = temporal_train_val_test_split(df)
+
+    objective_name = trial.suggest_categorical("objective", ["count:poisson", "reg:tweedie"])
     
     # Suggest hyperparameters
     params = {
-        'n_estimators': trial.suggest_int('n_estimators', 100, 1000),
-        'learning_rate': trial.suggest_float('learning_rate', 0.005, 0.1, log=True),
-        'max_depth': trial.suggest_int('max_depth', 3, 15),
-        'subsample': trial.suggest_float('subsample', 0.3, 1.0),
-        'colsample_bytree': trial.suggest_float('colsample_bytree', 0.3, 1.0),
-        'reg_alpha': trial.suggest_float('reg_alpha', 0.0, 5.0),
-        'reg_lambda': trial.suggest_float('reg_lambda', 0.0, 5.0),
-        'min_child_weight': trial.suggest_int('min_child_weight', 1, 10),
-        'gamma': trial.suggest_float('gamma', 0.0, 10.0),
-        'objective': 'count:poisson',
-        'eval_metric': ['poisson-nloglik'],
-        'early_stopping_rounds': 30,
-        'random_state': 42
+        "n_estimators": trial.suggest_int("n_estimators", 200, 1200),
+        "learning_rate": trial.suggest_float("learning_rate", 0.005, 0.1, log=True),
+        "max_depth": trial.suggest_int("max_depth", 3, 12),
+        "subsample": trial.suggest_float("subsample", 0.4, 1.0),
+        "colsample_bytree": trial.suggest_float("colsample_bytree", 0.4, 1.0),
+        "reg_alpha": trial.suggest_float("reg_alpha", 0.0, 5.0),
+        "reg_lambda": trial.suggest_float("reg_lambda", 0.0, 5.0),
+        "min_child_weight": trial.suggest_int("min_child_weight", 1, 15),
+        "gamma": trial.suggest_float("gamma", 0.0, 10.0),
+
+        "objective": objective_name,
+        "early_stopping_rounds": 30,
+        "random_state": 42,
     }
+    
+    # Objective-specific settings
+    if objective_name == "count:poisson":
+        params["eval_metric"] = "poisson-nloglik"
+    else:
+        params["eval_metric"] = "rmse"
+        params["tweedie_variance_power"] = trial.suggest_float("tweedie_variance_power", 1.05, 1.80)
+
+    # Optional: tune Dixon–Coles rho as well (helps draw probs)
+    dixon_coles_rho = trial.suggest_float("dixon_coles_rho", -0.20, -0.03)
     
     # Train home model
     X_train_home, y_train_home = split_features_targets(train_df, "home_goals")
@@ -67,11 +78,12 @@ def objective(trial):
         home_model, away_model,
         X_val_home, y_val_home,
         X_val_away, y_val_away,
-        label="Validation"
+        label="Validation",
+        dixon_coles_rho=dixon_coles_rho
     )
     
     # Outcome accuracy (most important for predictions)
-    return -metrics['outcome_accuracy_pct']  # Negative because Optuna minimizes
+    return -metrics['outcome_accuracy_pct']
     
 
 
@@ -102,14 +114,24 @@ def main():
     for param, value in study.best_params.items():
         print(f"  {param}: {value}")
     
-    # Save best params
+   # Save best params (Option A structure)
+    ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
     best_params_path = ARTIFACTS_DIR / "best_params.json"
-    with open(best_params_path, 'w') as f:
-        json.dump(study.best_params, f, indent=2)
+
+    best = dict(study.best_params)
+    rho = best.pop("dixon_coles_rho", None)
+
+    payload = {
+        "xgb_params": best,           # only params that go into XGBRegressor
+        "dixon_coles_rho": rho        # poisson-layer param
+    }
+
+    with open(best_params_path, "w") as f:
+        json.dump(payload, f, indent=2)
+
     print(f"\nSaved best parameters to {best_params_path}")
-    
-    # Optionally: Save study for analysis
-    with open(ARTIFACTS_DIR / "optuna_study.pkl", 'wb') as f:
+
+    with open(ARTIFACTS_DIR / "optuna_study.pkl", "wb") as f:
         pickle.dump(study, f)
 
 if __name__ == "__main__":

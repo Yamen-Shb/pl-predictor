@@ -30,49 +30,71 @@ def load_best_params():
     """Load best params from Optuna tuning if available"""
     best_params_path = ARTIFACTS_DIR / "best_params.json"
     
-    if best_params_path.exists():
-        with open(best_params_path, 'r') as f:
-            params = json.load(f)
-        print("Loaded tuned hyperparameters from Optuna")
-        return params
-    else:
-        # Default params
+    default_xgb = {
+        "n_estimators": 500,
+        "learning_rate": 0.05,
+        "max_depth": 6,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_alpha": 1.5,
+        "reg_lambda": 1.28,
+        "objective": "count:poisson",
+    }
+    default_rho = -0.10
+
+    if not best_params_path.exists():
         print("Using default hyperparameters")
-        return {
-            'n_estimators': 500,
-            'learning_rate': 0.05,
-            'max_depth': 6,
-            'subsample': 0.8,
-            'colsample_bytree': 0.8,
-            'reg_alpha': 1.5,        
-            'reg_lambda': 1.28
-        }
+        return default_xgb, default_rho
+
+    with open(best_params_path, "r") as f:
+        payload = json.load(f)
+
+    # Support both formats:
+    # - new: {"xgb_params": {...}, "dixon_coles_rho": ...}
+    # - old: flat dict from older runs
+    if "xgb_params" in payload:
+        xgb_params = payload.get("xgb_params") or {}
+        rho = float(payload.get("dixon_coles_rho", default_rho))
+    else:
+        xgb_params = dict(payload)
+        rho = float(xgb_params.pop("dixon_coles_rho", default_rho))
+
+    # fill any missing defaults
+    merged = dict(default_xgb)
+    merged.update(xgb_params)
+
+    return merged, rho
 
 
 # model training
 def train_xgboost_regressor(X_train, y_train, X_val, y_val):
-    params = load_best_params()
+    params, _ = load_best_params()
+
+    objective = params.pop("objective", "count:poisson")
 
     params.update({
-        'objective': 'count:poisson',
-        'eval_metric': ['poisson-nloglik'],
-        'early_stopping_rounds': 30,
-        'random_state': 42
+        "objective": objective,
+        "early_stopping_rounds": 30,
+        "random_state": 42,
     })
 
-    model = xgb.XGBRegressor(**params)
+    if objective == "count:poisson":
+        params["eval_metric"] = ["poisson-nloglik"]
+    elif objective == "reg:tweedie":
+        params["eval_metric"] = ["rmse"]
+        params["tweedie_variance_power"] = float(params.get("tweedie_variance_power", 1.3))
 
+    model = xgb.XGBRegressor(**params)
     model.fit(
         X_train,
         y_train,
         eval_set=[(X_train, y_train), (X_val, y_val)],
         verbose=False
     )
-
     return model
 
 # combined evaluation for both models (match-level metrics)
-def evaluate_match_predictions(home_model, away_model, X_home, y_home, X_away, y_away, label):
+def evaluate_match_predictions(home_model, away_model, X_home, y_home, X_away, y_away, label, dixon_coles_rho=-0.10):
     """
     Evaluate exact score accuracy and match outcome accuracy using Poisson probabilities
     """
@@ -92,7 +114,7 @@ def evaluate_match_predictions(home_model, away_model, X_home, y_home, X_away, y
     
     for h_exp, a_exp in zip(home_preds, away_preds):
         # Get Poisson probability matrix
-        score_matrix = poisson_matrix(h_exp, a_exp)
+        score_matrix = poisson_matrix(h_exp, a_exp, dixon_coles_rho=dixon_coles_rho)  # Adjust rho based on validation tuning
         
         # Find the most likely scoreline for exact score prediction
         max_idx = np.unravel_index(score_matrix.argmax(), score_matrix.shape)
@@ -104,8 +126,11 @@ def evaluate_match_predictions(home_model, away_model, X_home, y_home, X_away, y
         
         # Outcome: use AGGREGATED probabilities with smart draw prediction
         home_win_prob, draw_prob, away_win_prob = match_outcome_probabilities(score_matrix)
+
+        # Softer draw prediction: allow draw if it's competitive
+        max_prob = max(home_win_prob, draw_prob, away_win_prob)
         
-        if draw_prob > home_win_prob and draw_prob > away_win_prob:
+        if max_prob == draw_prob:
             pred_outcomes.append('D')
         elif home_win_prob > away_win_prob:
             pred_outcomes.append('H')
@@ -197,21 +222,28 @@ def plot_model_diagnostics(model, X_train, y_train, X_val, y_val, title_prefix="
 
     # Learning curves
     results = model.evals_result()
-    if results:
-        epochs = len(results['validation_0']['poisson-nloglik'])
-        x_axis = range(epochs)
-        plt.figure(figsize=(12, 5))
+    if results and 'validation_0' in results:
+        # Determine which metric was used (could be poisson-nloglik or rmse)
+        available_metrics = list(results['validation_0'].keys())
+        
+        if available_metrics:
+            metric_name = available_metrics[0]  # use the first available metric
+            epochs = len(results['validation_0'][metric_name])
+            x_axis = range(epochs)
+            
+            plt.figure(figsize=(12, 5))
+            
+            plt.subplot(1, 2, 1)
+            plt.plot(x_axis, results['validation_0'][metric_name], label='Train')
+            if 'validation_1' in results:
+                plt.plot(x_axis, results['validation_1'][metric_name], label='Val')
+            plt.xlabel('Boosting Round')
+            plt.ylabel(metric_name)
+            plt.title(f"{title_prefix} - {metric_name}")
+            plt.legend()
 
-        # poisson-nloglik
-        plt.subplot(1, 2, 1)
-        plt.plot(x_axis, results['validation_0']['poisson-nloglik'], label='Train')
-        plt.xlabel('Boosting Round')
-        plt.ylabel('poisson-nloglik')
-        plt.title(f"{title_prefix} - poisson-nloglik")
-        plt.legend()
-
-        plt.tight_layout()
-        plt.show()
+            plt.tight_layout()
+            plt.show()
 
 
 # main training pipeline
