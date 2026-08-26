@@ -12,7 +12,7 @@ def fetch_matches_by_date(competition_id, date_from, date_to):
     return utils.fetch_matches(competition_id, params)
 
 def main():
-    season = 2025
+    season = utils.get_current_season()
     competition_id = "PL"
     competition_key = f"pl_{season}"
     RAW_PATH = f"data/raw/pl_{season}.parquet"

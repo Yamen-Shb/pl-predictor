@@ -3,7 +3,7 @@ from datetime import timedelta
 from pathlib import Path
 from data_collection import utils, metadata
 
-SEASON = 2025
+SEASON = utils.get_current_season()
 COMPETITION_ID = "PL"
 COMPETITION_KEY = f"pl_{SEASON}"
 

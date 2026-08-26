@@ -14,6 +14,7 @@ from models.predict_upcoming import predict_upcoming, load_models
 from data_collection.weekly_fetcher import main as run_weekly_fetcher
 from data_processing.feature_extraction import extract_and_append_features
 from data_collection.metadata import get_last_upcoming_match_date
+from data_collection.utils import get_current_season
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data/metadata"
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 def last_processed_match_date():
     metadata = load_metadata()
-    last_date = metadata.get("pl_2025", {}).get("last_fetched_date")
+    last_date = metadata.get(f"pl_{get_current_season()}", {}).get("last_fetched_date")
     if last_date:
         # Metadata stores date-only strings; treat them as UTC dates to avoid
         # tz-naive vs tz-aware comparison issues.
@@ -39,11 +40,7 @@ def last_processed_match_date():
 
 
 def newest_match_date():
-    match_files = [
-        PROJECT_ROOT / "data/processed/matches_flat_2023.parquet",
-        PROJECT_ROOT / "data/processed/matches_flat_2024.parquet",
-        PROJECT_ROOT / "data/processed/matches_flat_2025.parquet",
-    ]
+    match_files = sorted((PROJECT_ROOT / "data/processed").glob("matches_flat_*.parquet"))
 
     dfs = []
     for f in match_files:
@@ -108,10 +105,11 @@ def run_weekly_pipeline() -> bool:
     # 2. Feature extraction
     try:
         logger.info("Loading flattened match data for feature extraction...")
-        df_2023 = pd.read_parquet(PROJECT_ROOT / "data/processed/matches_flat_2023.parquet")
-        df_2024 = pd.read_parquet(PROJECT_ROOT / "data/processed/matches_flat_2024.parquet")
-        df_2025 = pd.read_parquet(PROJECT_ROOT / "data/processed/matches_flat_2025.parquet")
-        df_all = pd.concat([df_2023, df_2024, df_2025], ignore_index=True)
+        match_files = sorted((PROJECT_ROOT / "data/processed").glob("matches_flat_*.parquet"))
+        if not match_files:
+            logger.warning("No flattened match files found. Skipping feature extraction.")
+            return False
+        df_all = pd.concat([pd.read_parquet(path) for path in match_files], ignore_index=True)
 
         logger.info("Running feature extraction...")
         extract_and_append_features(
@@ -136,9 +134,10 @@ def run_weekly_pipeline() -> bool:
     logger.info("Weekly pipeline complete. Updating metadata...")
 
     metadata = load_metadata()
-    if "pl_2025" not in metadata:
-        metadata["pl_2025"] = {}
-    metadata["pl_2025"]["last_fetched_date"] = str(latest_match.date())
+    current_season_key = f"pl_{get_current_season()}"
+    if current_season_key not in metadata:
+        metadata[current_season_key] = {}
+    metadata[current_season_key]["last_fetched_date"] = str(latest_match.date())
     save_metadata(metadata)
     
     logger.info(f"Metadata updated with last_fetched_date: {latest_match.date()}")
@@ -162,7 +161,7 @@ def run_upcoming_pipeline() -> bool:
     # Get current time
     now = pd.Timestamp.now(tz='UTC')
     
-    last_match_str = get_last_upcoming_match_date("pl_2025")
+    last_match_str = get_last_upcoming_match_date(f"pl_{get_current_season()}")
     if last_match_str:
         # Ensure timezone-aware (UTC) - metadata strings may be naive
         last_match = pd.to_datetime(last_match_str)

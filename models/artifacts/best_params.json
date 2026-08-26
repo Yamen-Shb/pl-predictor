@@ -1,16 +1,15 @@
 {
   "xgb_params": {
-    "objective": "reg:tweedie",
-    "n_estimators": 936,
-    "learning_rate": 0.06708510809566058,
-    "max_depth": 12,
-    "subsample": 0.4488207370296064,
-    "colsample_bytree": 0.44178217528913033,
-    "reg_alpha": 3.771228449174926,
-    "reg_lambda": 2.819516729150861,
-    "min_child_weight": 15,
-    "gamma": 0.4422617030493941,
-    "tweedie_variance_power": 1.681730295416684
+    "objective": "count:poisson",
+    "n_estimators": 300,
+    "learning_rate": 0.07959952171673543,
+    "max_depth": 7,
+    "subsample": 0.44979358528173435,
+    "colsample_bytree": 0.6408513204333978,
+    "reg_alpha": 0.04295272486147361,
+    "reg_lambda": 4.834057196341614,
+    "min_child_weight": 7,
+    "gamma": 1.4794534279920808
   },
-  "dixon_coles_rho": -0.05474832095291692
+  "dixon_coles_rho": -0.17946632102512944
 }

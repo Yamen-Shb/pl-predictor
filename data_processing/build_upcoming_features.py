@@ -42,11 +42,7 @@ DERBY_GROUPS = [
 ROLLING_WINDOW = 5
 
 def load_flat_matches_for_history() -> pd.DataFrame:
-    flat_paths = [
-        PROJECT_ROOT / "data/processed/matches_flat_2023.parquet",
-        PROJECT_ROOT / "data/processed/matches_flat_2024.parquet",
-        PROJECT_ROOT / "data/processed/matches_flat_2025.parquet",
-    ]
+    flat_paths = sorted((PROJECT_ROOT / "data/processed").glob("matches_flat_*.parquet"))
     dfs = [pd.read_parquet(p) for p in flat_paths if p.exists()]
     if not dfs:
         return pd.DataFrame()

@@ -8,7 +8,7 @@ def fetch_matches_for_season(season, competition_id):
     }
     return utils.fetch_matches(competition_id, params)
 
-seasons = [2023, 2024, 2025]
+seasons = list(range(2023, utils.get_current_season() + 1))
 for season in seasons:
     matches = fetch_matches_for_season(season, 'PL')
     utils.save_raw_matches(matches, season)

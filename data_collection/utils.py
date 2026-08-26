@@ -12,6 +12,19 @@ if not API_KEY or not API_KEY.strip():
 BASE_URL = "https://api.football-data.org/v4"
 HEADERS = { 'X-Auth-Token': API_KEY }
 
+
+def get_season_for_date(reference_date):
+    reference_ts = pd.Timestamp(reference_date)
+    if reference_ts.tz is None:
+        reference_ts = reference_ts.tz_localize("UTC")
+    if reference_ts.month >= 8:
+        return reference_ts.year
+    return reference_ts.year - 1
+
+
+def get_current_season():
+    return get_season_for_date(pd.Timestamp.now(tz="UTC"))
+
 def fetch_matches(competition_id, params):
     url = f"{BASE_URL}/competitions/{competition_id}/matches"
     response = requests.get(url, headers=HEADERS, params=params)

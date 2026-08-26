@@ -1,5 +1,7 @@
 import pandas as pd
+from pathlib import Path
 from tqdm import tqdm
+from data_collection import utils
 
 # check if match should be processed
 def is_match_eligible(match, existing_match_ids, start_season, start_matchweek):
@@ -239,7 +241,7 @@ def build_feature_row(match, computed_features):
 def compute_features_for_match(historical_data, match, rolling_window, derby_groups, historic_top6):
     home_team = match["home_team"]
     away_team = match["away_team"]
-    season = match.get("season", 2025)  # Default to current season
+    season = match.get("season", utils.get_current_season())
 
     # Existing features
     (home_points_last5, home_goals_for_last5, home_goals_against_last5,
@@ -386,12 +388,8 @@ def extract_and_append_features(df_flat, features_path="data/features/features.p
     return combined_features
 
 if __name__ == "__main__":
-    df_2023 = pd.read_parquet("data/processed/matches_flat_2023.parquet")
-    df_2024 = pd.read_parquet("data/processed/matches_flat_2024.parquet")
-    df_2025 = pd.read_parquet("data/processed/matches_flat_2025.parquet")
-    
-    # combine all data
-    df_all = pd.concat([df_2023, df_2024, df_2025], ignore_index=True)
+    processed_paths = sorted(Path("data/processed").glob("matches_flat_*.parquet"))
+    df_all = pd.concat([pd.read_parquet(path) for path in processed_paths], ignore_index=True)
     
     features = extract_and_append_features(
         df_all, 

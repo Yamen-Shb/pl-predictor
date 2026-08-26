@@ -66,7 +66,10 @@ def predict_upcoming(
         home_pred = float(home_preds[i])
         away_pred = float(away_preds[i])
 
-        score_matrix = poisson_matrix(home_pred, away_pred)
+        BIVARIATE_L3 = 0.10
+        DIXON_COLES_RHO = -0.08
+
+        score_matrix = poisson_matrix(home_pred, away_pred, bivariate_l3=BIVARIATE_L3, dixon_coles_rho=DIXON_COLES_RHO)
         home_win_pct, draw_pct, away_win_pct = match_outcome_probabilities(score_matrix)
 
         out = {
